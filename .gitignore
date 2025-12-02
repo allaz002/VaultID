@@ -60,3 +60,4 @@ Projektbeschreibung.md
 
 # Enviroment variables file
 .env
+/generated/prisma

@@ -5,13 +5,18 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from 'src/users/users.module';
 import { User } from 'src/users/user.entity';
+import { DatabaseModule } from '../database/database.module';
 
 @Module({
   imports: [
     ConfigModule,
     UsersModule,
+    DatabaseModule,
     JwtModule.registerAsync({
-      imports: [ConfigModule],
+      imports: [
+        ConfigModule,
+        UsersModule,
+      ],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET') || 'changeme',
