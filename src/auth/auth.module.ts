@@ -6,10 +6,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from 'src/users/users.module';
 import { User } from 'src/users/user.entity';
 import { DatabaseModule } from '../database/database.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
     ConfigModule,
+    MailModule,
     UsersModule,
     DatabaseModule,
     JwtModule.registerAsync({

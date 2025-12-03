@@ -8,6 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
         private readonly prisma: PrismaService,
+        private readonly mailService: MailService,
     ) {} 
     
     private async generateTokensForUser(user: { id: number; email: string }) {
@@ -47,6 +49,18 @@ export class AuthService {
             passwordHash,
             createUserDto.name,
         );
+
+        const emailVerificationToken = randomUUID();
+        const emailVerificationExpiresAt = add(new Date(), { hours: 24});
+
+        await this.prisma.emailVerificationToken.create({
+            data: {
+                token: emailVerificationToken,
+                userId: user.id,
+                expiresAt: emailVerificationExpiresAt,}
+        })
+
+        await this.mailService.sendEmailVerifictation(user.email, emailVerificationToken)
 
         const tokens = await this.generateTokensForUser({
             id: user.id,
@@ -136,4 +150,88 @@ export class AuthService {
         return { success: true };
     }
     
+    async verifyEmail(token: string) {
+        const record = await this.prisma.emailVerificationToken.findUnique({
+            where: { token },
+            include: { user: true },
+        })
+
+        if(!record || record.used) {
+            throw new BadRequestException('Invalid verification token.');
+        }
+
+        if(record.expiresAt < new Date()){
+            throw new BadRequestException('Verification token has expired.');
+        }
+
+        await this.prisma.user.update({
+            where: { id: record.userId },
+            data: { emailVerified: true },
+        });
+
+        await this.prisma.emailVerificationToken.update({
+            where: { id: record.id },
+            data: { used: true },
+        });
+
+        return { success: true };
+    }
+
+    async forgotPassword(email: string) {
+        const user = await this.usersService.findByEmail(email);
+
+        if(!user) {
+            return { success: true };
+        }
+
+        const token = randomUUID();
+        const expiresAt = add(new Date(), { hours: 1 });
+
+        await this.prisma.passwordResetToken.create({
+            data: {
+                token,
+                userId: user.id,
+                expiresAt,
+            },
+        })
+
+        await this.mailService.sendPasswordReset(email, token);
+
+        return { success: true };
+    }
+
+    async resetPassword(token: string, newPassword: string) {
+        const record = await this.prisma.passwordResetToken.findUnique({
+            where: { token },
+            include: { user: true },
+        });
+
+        if(!record || record.used) {
+            throw new BadRequestException('Invalid reset token.');
+        }
+
+        if(record.expiresAt < new Date()) {
+            throw new BadRequestException('Reset token has expired.');
+        }
+
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+
+        await this.prisma.user.update({
+            where: { id: record.userId },
+            data: { passwordHash },
+        });
+        
+        await this.prisma.refreshToken.updateMany({
+            where: { userId: record.userId },
+            data: { revoked: true },
+        });
+
+        await this.prisma.passwordResetToken.update({
+            where: { id: record.id },
+            data: { used: true },
+        });
+        
+        return { success: true };
+    }
+
 }
