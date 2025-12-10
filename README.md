@@ -1,7 +1,8 @@
-<h1>
-  <img src="./assets/logo_transparent.png" width="100" alt="VaultID Logo" style="vertical-align: middle;">
-  VaultID – Authentication & Identity Service
-</h1>
+<div style="display: flex; align-items: center; gap: 20px; margin-bottom: 12px;">
+  <img src="./assets/logo_transparent.png" width="90" alt="VaultID Logo">
+  <h1 style="margin: 0;">VaultID – Authentication & Identity Service</h1>
+</div>
+
 
 VaultID is an authentication and identity service built with Node.js, NestJS, TypeScript, Prisma, and PostgreSQL.  
 It provides user management, token-based authentication, email verification, and password reset functionality.  
